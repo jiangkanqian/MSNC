@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:task="http://www.springframework.org/schema/task" 
+    xmlns:tx="http://www.springframework.org/schema/tx"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:cache="http://www.springframework.org/schema/cache"
+    xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+       http://www.springframework.org/schema/cache http://www.springframework.org/schema/cache/spring-cache-3.1.xsd 
+       http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd
+       http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-3.0.xsd"
+       >
+    <!-- 
+    @author chen.kai
+    applicationContext配置文件
+     -->      
+     <tx:annotation-driven/>
+     
+      <context:component-scan base-package="com.cn.common">
+          <context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+     </context:component-scan>
+
+    <!--DataBase Configuration -->
+    <!-- Spring的事务管理器有5个，都实现了PlatformTransactionManager接口 
+        DataSourceTransactionManager                 JDBC事务管理器 
+        HibernateTransactionManager                    Hibernate事务管理器 
+        JdoTransactionManager                               JDO事务管理器 
+        JtaTransactionManager                           JTA事务管理器      
+        PersistenceBrokerTransactionManager    Apache的OJB事务管理器 -->
+   
+      <!-- 加载所有的配置文件，并且过滤掉properties文件中的特殊字符，重写Spring的PropertyPlaceholderConfigurer方法 -->
+    <bean id="propertiesConfig" class="com.cn.common.sys.tools.EncryptPropertyPlaceholderConfigurer">  
+	    <property name="encryptPropNames">
+	           <list>
+	              <!-- jdbc配置解析 -->
+	              <value>jdbc.driverClassName</value>
+	              <value>jdbc.url</value>
+	              <value>jdbc.username</value>
+	              <value>jdbc.password</value>
+	           </list>
+	    </property>
+	    <property name="locations" value="classpath:*.properties" />
+	    <!-- 是否使用占位符 --> 
+	    <property name="ignoreUnresolvablePlaceholders" value="true" /> 
+	</bean> 
+	 <!-- 配置第三方依赖dbcp数据源， 依赖于2个jar包commons-dbcp.jar、commons-pool.jar-->
+	<!-- dbcp是tomcat的数据源内置组件，所以当web容器为tomcat时，配置此数据源更好 -->  
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driverClassName}" />
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+         <!-- 初始化连接大小 -->  
+        <property name="initialSize" value="0"></property>  
+        <!-- 连接池最大数量 和最大空闲数最好数值接近，减少其创建连接池的开销-->  
+        <property name="maxActive" value="8"></property>  
+        <!-- 连接池最大空闲 -->  
+        <property name="maxIdle" value="6"></property>  
+        <!-- 连接池最小空闲 -->  
+        <property name="minIdle" value="0"></property>  
+        <!-- 获取连接最大等待时间 -->  
+        <property name="maxWait" value="30000"></property>  
+         
+    </bean> 
+     <!-- 初始化数据库记录 
+    <jdbc:initialize-database data-source="dataSource" ignore-failures="ALL">  
+        <jdbc:script location="classpath:*.sql"/>  
+    </jdbc:initialize-database> -->  
+    <!-- 7. 配置myBatis客户端 -->
+     <bean id="sqlMapClient" class="org.mybatis.spring.SqlSessionFactoryBean">   
+        <property name="dataSource" ref="dataSource" /> 
+        <!-- 自动扫描mapping.xml文件 -->  
+        <property name="configLocation" value="classpath:mybatis-config.xml" /> 
+        <!-- 自动扫描需要定义类别名的包，将包内的JAVA类的类名作为类别名 
+        <property name="typeAliasesPackage" value="com.cn.common.entity" />-->
+        <!-- 扫描sql配置文件:mapper需要的xml文件 -->
+		<property name="mapperLocations" value="classpath:com/cn/common/config/*.xml" />
+		
+    </bean>
+    
+    <!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+    <!--mapper批量自动扫描，从mapper包中扫描出mapper接口，自动生成代理对象，并且加入注册到spring的bean中  -->
+    <!-- 需要遵循一些规范：需要将mapper接口名称和mapper.xml映射文件保持一致 ，同名 前提是：使用的事mapper代理方式 -->  
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">  
+        <property name="basePackage" value="com.cn.common.dao" />  
+        <property name="sqlSessionFactoryBeanName" value="sqlMapClient"></property> 
+    </bean> 
+    
+    
+    <!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->  
+    <bean id="transactionManager"    class="org.springframework.jdbc.datasource.DataSourceTransactionManager">  
+        <property name="dataSource" ref="dataSource" />  
+    </bean>
+    
+    <!-- 8. 配置事务的传播特性     -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="delete*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+            <tx:method name="save*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+            <tx:method name="insert*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+            <tx:method name="update*" propagation="REQUIRED" read-only="false" rollback-for="java.lang.Exception" />
+            <tx:method name="load*" propagation="SUPPORTS" read-only="true"/>
+            <tx:method name="find*" propagation="SUPPORTS" read-only="true"/>
+            <tx:method name="search*" propagation="SUPPORTS" read-only="true"/>
+            <tx:method name="select*" propagation="SUPPORTS" read-only="true"/>
+            <tx:method name="get*" propagation="SUPPORTS" read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
+    
+ 
+    
+    <!-- 10. 配置哪些类哪些方法使用事务<aop:pointcut id="allManagerMethod" expression="execution(* com.test.server.dao.*.impl.*(..))"/> -->
+    <aop:config>
+        <aop:pointcut id="allManagerMethod"  expression="execution(* com.cn.common.service.impl.*ServiceImpl.*(..))" />
+        <aop:advisor  pointcut-ref="allManagerMethod" advice-ref = "txAdvice"/>
+    </aop:config>
+    
+       <!--11.线程池配置-->
+    <bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+        <!-- 核心线程数，默认为1 -->
+        <property name="corePoolSize" value="10" />
+         <!-- 最大线程数，默认为Integer.MAX_VALUE -->
+        <property name="maxPoolSize" value="30" />
+        <!-- 队列最大长度，一般需要设置值>-->
+        <property name="queueCapacity" value="40" />
+        <!-- 线程池维护线程所允许的空闲时间，默认为60s -->
+        <property name="keepAliveSeconds" value="30000" />
+        <!-- 线程池对拒绝任务(无线程可用)的处理策略 ThreadPoolExecutor.CallerRunsPolicy策略 ,调用者的线程会执行该任务,如果执行器已关闭,则丢弃.  -->
+        <property name="rejectedExecutionHandler">
+            <bean class="java.util.concurrent.ThreadPoolExecutor$CallerRunsPolicy" />
+        </property>
+    </bean>
+   
+   
+   <!-- 配置文件上传，如果没有使用文件上传可以不用配置，当然如果不配，那么配置文件中也不必引入上传组件包   -->  
+    <bean id="multipartResolver"  class="org.springframework.web.multipart.commons.CommonsMultipartResolver">    
+        <!-- 默认编码 -->  
+        <property name="defaultEncoding" value="utf-8" />    
+        <!-- 文件大小最大值，所有上传文件总和  1024*1024*10=10M-->  
+        <property name="maxUploadSize" value="10485760" />    
+        <!-- 内存中的最大值 -->  
+        <property name="maxInMemorySize" value="40960" />    
+    </bean>   
+    
+     <!-- 9.FreeMarker模板加载帮助类-->
+    <bean id="freeMarkerConfigurer" class="org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer">
+        <property name="templateLoaderPath" value="/WEB-INF/template/" />
+        <property name="freemarkerSettings"><!-- 设置FreeMarker环境属性 -->
+            <props>
+                <prop key="template_update_delay">5</prop><!--刷新模板的周期，单位为秒 -->
+                <prop key="default_encoding">UTF-8</prop><!--模板的编码格式 -->
+                <prop key="locale">UTF-8</prop><!-- 本地化设置 -->
+                <prop key="datetime_format">yyyy-MM-dd HH:mm:ss</prop>
+                <prop key="time_format">HH:mm:ss</prop>
+                <prop key="number_format">0.####</prop>
+                <prop key="boolean_format">true,false</prop>
+                <prop key="whitespace_stripping">true</prop>
+                <prop key="tag_syntax">auto_detect</prop>
+                <prop key="url_escaping_charset">UTF-8</prop>
+            </props>
+        </property>
+     </bean>
+
+   <!-- 配置Spring解析帮助类，通过bean的id获取当前的bean -->
+   <bean id="context" class="com.cn.common.sys.tools.SpringGetBean"></bean>    
+    <!-- 启动定时器注解 -->
+   <task:annotation-driven scheduler="myScheduler" executor="executor"   mode="proxy"/>
+   <task:scheduler id="myScheduler" pool-size="10"/>
+    <!-- 定义连接池，这里要和rabbitMq的channelCacheSize的value接近，最好一样，如果太小会导致队列一直挂着，不执行 -->
+   <task:executor id="executor"  pool-size="50" queue-capacity="128" /> 
+ 
+   <!-- 引入spring-amqp-confim.xml 确认模式-->
+  <import resource="/spring-amqp-confirm.xml"/>
+   <!-- 引入spring-amqp.xml 事物模式 
+   <import resource="/spring-amqp.xml"/>-->
+   
+   
+   <!-- Spring Mail配置 -->
+   <bean id="sender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+      <property name="host" value="${email.host}"></property>
+      <property name="username" value="${email.username}"></property>
+      <property name="password" value="${email.password}"></property>
+      <property name="defaultEncoding" value="UTF-8"></property>
+      <property name="javaMailProperties">
+        <props>           
+           <prop key="mail.smtp.host">${email.host}</prop>
+           <prop key="mail.smtp.auth">true</prop>
+           <prop key="mail.smtp.timeout">500000</prop>
+           <!--  
+           <prop key="mail.smtp.starttls.enable">true</prop>
+           <prop key="mail.smtp.socketFactory.port">456</prop>
+           <prop key="mail.smtp.socketFactory.fallback">false</prop>
+           <prop key="mail.smtp.socketFactory.class">javax.net.ssl.SSLSocketFactory</prop>-->
+        </props>
+      </property>
+   </bean>
+   
+   <!-- 启用缓存注解功能,这个是必须的,否则注解不会生效,另外,该注解一定要声明在spring主配置文件中才会生效-->
+   <cache:annotation-driven />
+   <!-- 引入redis配置-->
+   <import resource="/spring-redis.xml"/> 
+</beans>

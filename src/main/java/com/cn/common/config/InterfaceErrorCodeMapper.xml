@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+   5)开启二级缓存，最好开在单表操作上，避免脏数据的出现，insert,update,delete操作时要刷新缓存
+     flushCache=“true“：刷新缓存
+     useCache="false"：禁用缓存
+ --> 
+<mapper namespace="com.cn.common.dao.InterfaceErrorCodeMapper"> 
+<!-- 代表当前namespace开启缓存。半个小时刷新一下缓存 -->
+<cache eviction="FIFO"  flushInterval="300000"  size="512" ></cache>
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="findErrMsgByInterfaceSonTypeAndErrcode" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT
+			err_msg errmsg
+		FROM
+			`interface_error`
+		WHERE
+			interface_son_type = #{interfaceSonType} 
+		AND err_code= #{errcode,jdbcType=VARCHAR}
+  </select>
+  
+  <insert id="addErrorCode"  parameterType="java.util.HashMap" > 
+		INSERT INTO interface_error (
+			interface_son_type,
+			err_code,
+			err_msg
+		)
+		VALUES
+			(#{interfaceSonType,jdbcType=VARCHAR},#{errCode,jdbcType=VARCHAR},#{errMsg,jdbcType=VARCHAR})
+  </insert>
+  
+  <delete id="deleteErrorCode"  parameterType="java.util.HashMap">
+  delete from interface_error where sysid=#{sysid,jdbcType=INTEGER}
+  </delete>
+  
+  <update id="updateErrorCode"  parameterType="java.util.HashMap">
+	  update interface_error set 
+		  interface_son_type=#{interfaceSonType,jdbcType=VARCHAR},
+		  err_code=#{errCode,jdbcType=VARCHAR},
+		  err_msg=#{errMsg,jdbcType=VARCHAR} 
+	    where sysid=#{sysid,jdbcType=INTEGER} 
+  </update>
+  
+  <select id="queryAllErrorCode" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		 SELECT
+			sysid,
+			interface_son_type interfaceSonType,
+			err_code errCode,
+			err_msg errMsg
+		FROM
+			`interface_error` where 1=1
+			<if test="interfaceSonType!=null and interfaceSonType!=''">
+			 and interface_son_type like CONCAT('%',#{interfaceSonType,jdbcType=VARCHAR},'%')
+			</if>
+			<if test="errCode!=null and errCode!=''">
+	and err_code like CONCAT('%',#{errCode,jdbcType=VARCHAR},'%')
+			</if>
+  </select>
+  
+  <select id="selectAllErrorCode" resultType="java.util.HashMap">
+      select CONCAT(interface_son_type,err_code) code,err_msg msg
+      from interface_error
+  </select>
+  
+  <select id="isRepeatSetErrorCode" parameterType="java.util.HashMap" resultType="String">
+  	SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`interface_error` ie
+		WHERE
+			ie.interface_son_type = #{interfaceSonType,jdbcType=VARCHAR} and ie.err_code=#{errCode,jdbcType=VARCHAR}
+  </select>
+</mapper>

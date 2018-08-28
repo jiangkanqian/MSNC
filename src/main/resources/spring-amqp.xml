@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+    xsi:schemaLocation="
+       http://www.springframework.org/schema/beans 
+       http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+       http://www.springframework.org/schema/rabbit  
+       http://www.springframework.org/schema/rabbit/spring-rabbit-1.3.xsd  " >
+    <!-- 
+    @author chen.kai    rabbitMQ配置文件(消息事物默认，效率低一些)
+            ConnectionFactory、Connection、Channel都是RabbitMQ对外提供的API中最基本的对象。
+            Connection是RabbitMQ的socket链接，它封装了socket协议相关部分逻辑。
+            ConnectionFactory为Connection的制造工厂。
+            Channel是我们与RabbitMQ打交道的最重要的一个接口，我们大部分的业务操作是在Channel这个接口中完成的，包括定义Queue、定义Exchange、绑定Queue与Exchange、bindings等。       
+     -->
+    <!-- rabbit语法配法，这里稍作举例写法，不懂的话，具体相关配置可以到网上搜索配置或者阅读相关源码
+    <rabbit:connection-factory id="connectionFactory" host="${rabbit.host}" port="${rabbit.prot}" username="${rabbit.username}" 
+                               password="${rabbit.password}" connection-cache-size="10"/>
+    <rabbit:admin id="rabbitAdmin" connection-factory="connectionFactory"/>
+    <rabbit:template id="amqpTemplate"  connection-factory="connectionFactory" 
+	    exchange="exchangeTest" />
+   -->   
+    <!--Spring配法  创建连接工厂类  org.springframework.amqp.rabbit.connection.CachingConnectionFactory-->  
+    <bean id="connectionFactory"  class="org.springframework.amqp.rabbit.connection.CachingConnectionFactory">   
+        <constructor-arg value="${rabbit.host}" /> 
+        <property name="username" value="${rabbit.username}" />  
+        <property name="password" value="${rabbit.password}" /> 
+        <property name="host" value="${rabbit.host}" />
+        <property name="port" value="${rabbit.prot}" />
+        <!-- 创建多链接，当从connectionCacheSize大于1的时候，一定要设置cacheMode 
+        <property name="cacheMode" value="CONNECTION" />-->
+        <property name="connectionCacheSize" value="1" />
+        <!-- 集群配置 -->
+        <property value="${rabbit.addresses}" name="addresses"/>
+        <!-- 虚拟主机地址 -->
+        <property name="virtualHost" value="${rabbitmq.virtual-host}" />  
+        <!--这里的配置必须注意，channelCacheSize的value值必须和executor的 pool-size接近，
+                                   如果pool-size太小，则会导致多个监听(消费者)会造成消息堵塞，一直Unacked，无法消费
+            channel类似于http连接，属于共享通道，因此value设置需要注意 
+        --> 
+        <property name="channelCacheSize" value="50" />
+        <property name="executor" ref="executor" />
+    </bean>   
+    <!-- 定义一个rabbit的管理员，用来维护exchanges,queue等的维护，用于它们的增加，删除与关闭等 --> 
+    <bean id="rabbitAdmin"  class="org.springframework.amqp.rabbit.core.RabbitAdmin">  
+         <!-- 默认的构造函数参数 --> 
+        <constructor-arg ref="connectionFactory" />
+    </bean> 
+    
+     <!-- 定义一个json消息转换器,spring默认的是jackjson -->    
+    <bean id="jsonMessageConverter" class="org.springframework.amqp.support.converter.JsonMessageConverter"/>
+   
+    <!-- 模版配置,模版只能配置一个 -->
+    <bean id="amqpTemplate" class="org.springframework.amqp.rabbit.core.RabbitTemplate">
+         <constructor-arg ref="connectionFactory" />
+         <!-- 设置数据传输策略 -->
+         <property name="messageConverter" ref="jsonMessageConverter" />
+         <!-- 设置重连策略 -->
+         <property name="retryTemplate"  ref="retryTemplate" />
+         <!-- 当只有一个exchange时，可以不用配置此项，多个的话，会报错 -->
+         <property name="exchange" value="topicExchange" />
+         <!-- 设置事物 -->
+         <property name="channelTransacted" value="true"></property>
+    </bean>
+    
+    <!--标准的AMQP Exchange有4种: Direct, Topic, Headers, Fanout, 根据实际需要选择。-->
+    <!--Direct: 如果消息的routing key与bingding的routing key直接匹配的话, 消息将会路由到该队列上。-->
+    <!--Topic: 如果消息的routing key与bingding的routing key符合通配符匹配的话, 消息将会路由到该队列上。-->
+    <!--Headers: 如果消息参数表中的头信息和值都与binding参数表中相匹配, 消息将会路由到该队列上。-->
+    <!--Fanout: 不管消息的routing key和参数表的头信息/值是什么, 消息将会路由到该队列上。-->
+    <!--创建topic类型的交换器,绑定， 并持久化     class="org.springframework.amqp.core.TopicExchange"-->
+     <rabbit:topic-exchange  name="topicExchange" durable="true">
+         <!--  绑定交换器、队列   org.springframework.amqp.core.Binding  -->
+         <rabbit:bindings><!--pattern相当于exchange的routing key  默认的routing key与队列的名称相同-->
+            <rabbit:binding pattern="mail.*"    queue="mail_queue" />
+            <rabbit:binding pattern="mob.*"      queue="mob_queue" />
+            <rabbit:binding pattern="wechatApp.*"   queue="wechatApp_queue" />
+            <rabbit:binding pattern="wechatCorp.*"   queue="wechatCorp_queue" />
+            <rabbit:binding pattern="task.*"   queue="interface_task_log" />
+         </rabbit:bindings> 
+     </rabbit:topic-exchange>
+    <!-- 添加重试功能，如果重试失败会返回给调用者异常 --> 
+     <bean id="retryTemplate" class="org.springframework.retry.support.RetryTemplate" >
+	    <property name="backOffPolicy">
+	        <bean class="org.springframework.retry.backoff.ExponentialBackOffPolicy">
+	            <property name="initialInterval" value="500" />
+	            <property name="multiplier" value="10.0" />
+	            <property name="maxInterval" value="10000" />
+	        </bean>
+	    </property>
+	    <!-- 设置重试次数 -->
+	     <property name="retryPolicy">  
+            <bean class="org.springframework.retry.policy.SimpleRetryPolicy">  
+                <property name="maxAttempts" value="1" />  
+            </bean>  
+        </property>
+	</bean> 
+     <!-- 设置持久化的队列   class="org.springframework.amqp.core.Queue"
+         id和name可以一样，不影响  durable='true' 代表持久化其默认值是 durable="true" exclusive="false" auto-delete="false"
+     --> 
+     <!-- 邮件队列    --> 
+     <rabbit:queue id="mail_queue"  name="mail_queue"> 
+	     <!--声明队列优先级   这个地方一定是integer的，其它类型无效 
+	     <rabbit:queue-arguments>
+	            <entry key="x-max-priority">
+	            <value type="java.lang.Integer">10</value>
+	            </entry>
+	    </rabbit:queue-arguments>-->
+     </rabbit:queue>
+     <!-- 短信队列   -->
+     <rabbit:queue id="mob_queue"  name="mob_queue"/>
+     <!-- 订阅号等微信队列    --> 
+     <rabbit:queue id="wechatApp_queue" name="wechatApp_queue"/>
+     <!-- 企业号微信队列    --> 
+     <rabbit:queue id="wechatCorp_queue" name="wechatCorp_queue"/>
+     <!-- 插入接口执行记录队列 -->
+     <rabbit:queue id="interface_task_log" name="interface_task_log"/>
+     
+    <!--配置监听器   用于接收消息的处理类 --> 
+    <!-- 邮件监听器 -->    
+    <bean id="mailListener" class="com.cn.common.queue.listener.InterfaceMailQueueListener"/>  
+    <!-- 短信监听器 -->    
+    <bean id="mobListener" class="com.cn.common.queue.listener.InterfaceMobileQueueListener"/>  
+    <!-- 微信订阅号等监听器  --> 
+    <bean id="wechatAppListener" class="com.cn.common.queue.listener.InterfaceWechatAppQueueListener"/>
+    <!-- 微信企业号监听器  --> 
+    <bean id="wechatCorpListener" class="com.cn.common.queue.listener.InterfaceWechatCorpQueueListener"/>
+    <!-- 插入执行记录监听器 -->
+    <bean id="interfaceLogListener" class="com.cn.common.queue.listener.InterfaceTaskLogQueueListener"/>
+    
+    <!--concurrency: 初始化监听器容器时, 并发消费者的数目.-->
+    <!--max-concurrency: 并发消费者的最大数目.-->
+    <!--prefetch: 一次最多可以发送给同一个消费者的消息数目.-->
+    <!-- 多个queue-names，可以用“,”隔开 ,这里的监听必须实现MessageListener类，而且默认的方法名字为：metheod="onMessage"，不支持自定义方法（原因可能是当前spring-rabbit版本太低） -->
+   
+     
+    <!-- 异步使用事物 -->
+    <bean id="rabbitTxManage" class="org.springframework.amqp.rabbit.transaction.RabbitTransactionManager">
+      <property name="connectionFactory" ref="connectionFactory"></property>
+    </bean>
+    
+    <!-- 监听配置 -->
+    <rabbit:listener-container  connection-factory="connectionFactory" transaction-manager="rabbitTxManage" channel-transacted="true" auto-startup="true" acknowledge="auto" prefetch="10" max-concurrency="10" concurrency="5" transaction-size="5"  task-executor="executor">
+        <rabbit:listener  ref="mobListener" queues="mob_queue" method="onMessage" />
+        <rabbit:listener  ref="mailListener" queues="mail_queue" method="onMessage" /> 
+        <rabbit:listener  ref="wechatCorpListener" queues="wechatCorp_queue" method="onMessage" />
+        <rabbit:listener  ref="wechatAppListener" queues="wechatApp_queue" method="onMessage" /> 
+        <rabbit:listener  ref="interfaceLogListener" queues="interface_task_log" /> 
+    </rabbit:listener-container>
+   
+</beans>

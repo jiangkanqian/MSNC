@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.UserMapper"> 
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="queryAllUser" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	   
+	SELECT
+			users.user_id userId,
+			users.account,
+			users.user_name userName,
+			users.emp_name empName,
+			role.role_id roleId,
+			role.role_name roleName,
+			users.phone,
+			users.email,
+			users.sex,
+			users.system_id systemId,
+			apps.appname,
+			users.user_state userState,
+		DATE_FORMAT(users.create_time, '%Y-%m-%d %T') createTime
+		
+		FROM
+			`users` users
+		LEFT JOIN `users_role` userRole ON users.user_id = userRole.user_id
+		LEFT JOIN `role` role ON userRole.role_id = role.role_id LEFT JOIN apps on users.system_id=apps.appid where 1=1
+		<if test="userName!=null and userName!=''">
+		and users.user_name  like CONCAT('%',#{userName,jdbcType=VARCHAR},'%')  
+		</if>
+		<if test="account!=null and account!=''">
+		and users.account  like CONCAT('%',#{account,jdbcType=VARCHAR},'%')  
+		</if>
+	
+  </select>
+  <delete id="deleteUser" parameterType="java.util.HashMap">
+		DELETE
+		FROM
+			users
+		WHERE
+			user_id = #{userId,jdbcType=INTEGER}
+  </delete>
+  
+  <delete id="deleteBatchUser" parameterType="java.util.List">
+  	DELETE
+		FROM
+			users
+		WHERE
+			user_id in (
+		<foreach collection="list" item="item" index="index" separator=",">
+			#{item.userId,jdbcType=INTEGER}
+		</foreach>
+		)
+  </delete>
+  <insert id="addUser" parameterType="java.util.HashMap" useGeneratedKeys="true" keyProperty="userId">
+		  INSERT INTO users (
+			user_name,
+			system_id,
+			phone,
+			email,
+			account,
+			passwrod,
+			sex,
+			emp_name,
+			user_state,
+			create_time
+		)
+		VALUES
+			(
+				#{userName,jdbcType=VARCHAR},
+				#{systemId,jdbcType=VARCHAR},
+				#{phone,jdbcType=INTEGER},
+				#{email,jdbcType=VARCHAR},
+				#{account,jdbcType=VARCHAR},
+				#{password,jdbcType=VARCHAR},
+				#{sex,jdbcType=VARCHAR},
+				#{empName,jdbcType=VARCHAR},
+				#{userState,jdbcType=VARCHAR},
+				now()
+			)
+  </insert>
+  <select id="queryUserById" parameterType="java.util.HashMap" resultType="com.cn.common.entity.User">
+	   SELECT
+			users.user_id userId,
+			users.account,
+			users.user_name userName,
+			users.emp_name empName,
+			users.user_state userState,
+			users.phone phone,
+			users.email email,
+			users.sex sex,
+			users.create_time createTime
+		FROM
+			`users`
+		WHERE
+			users.user_id = {#userId,jdbcType=INTEGER}
+  </select>
+  
+  <update id="updateUser" parameterType="java.util.HashMap">
+
+		UPDATE users
+		SET user_name =#{userName,jdbcType=VARCHAR},
+		users.system_id =#{systemId,jdbcType=VARCHAR},
+		phone =#{phone,jdbcType=INTEGER},
+		email =#{email,jdbcType=VARCHAR},
+		sex =#{sex,jdbcType=CHAR},
+		emp_name =#{empName,jdbcType=VARCHAR},
+		user_state =#{userState,jdbcType=INTEGER},
+		account=#{account,jdbcType=VARCHAR}
+		WHERE
+			user_id =#{userId,jdbcType=INTEGER}
+  </update> 
+  <select id="isRepeatAcount" parameterType="java.util.HashMap" resultType="String">
+		SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`users`
+		WHERE
+			account = #{account,jdbcType=VARCHAR}
+  </select>
+  <update id="updatePassword" parameterType="java.util.HashMap">
+		UPDATE users SET 
+		<choose>  
+             <when test="password!=null">users.passwrod = #{password,jdbcType=VARCHAR} </when>  
+             <when test="password==null">users.passwrod = "666666"</when>  
+        </choose>		
+		WHERE
+			users.account = #{account,jdbcType=INTEGER}
+  </update> 
+  
+  <select id="checkoutLogginQuery" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+	  SELECT
+			users.user_id userId,
+			users.account,
+			users.user_name userName,
+			role.role_name roleName,
+			users.emp_name empName,
+			role.role_id roleId,
+			users.phone,
+			users.system_id systemId,
+			users.email,
+		CASE
+		WHEN users.sex = 'F' THEN
+			'女'
+		WHEN users.sex = 'M' THEN
+			'男'
+		ELSE 
+			''
+		END sex,
+		users.user_state userState,
+		DATE_FORMAT(users.create_time, '%Y-%m-%d %T') createTime
+		
+		FROM
+			`users` users
+		LEFT JOIN `users_role` userRole ON users.user_id = userRole.user_id
+		LEFT JOIN `role` role ON userRole.role_id = role.role_id 
+		WHERE
+		users.account = #{account,jdbcType=VARCHAR}
+		AND users.passwrod = #{password,jdbcType=VARCHAR}
+  </select>
+  <select id ="checkAccount" parameterType="java.util.HashMap" resultType="String">
+   SELECT
+		CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`users`
+		WHERE
+			account = #{account,jdbcType=VARCHAR}
+  </select>
+  
+</mapper>

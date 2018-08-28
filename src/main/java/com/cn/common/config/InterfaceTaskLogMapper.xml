@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址,也就是dao下面的java类，通过这个java类，可以访问类里定义的方法
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.InterfaceTaskLogMapper"> 
+
+  <!-- 插入任务记录 -->
+  <insert id="insert" parameterType="java.util.Map">
+  insert into interface_task_log
+  (message_id,see_number,from_user,from_system,from_system_id,from_time,call_back_url,interface_url,parameters,do_type,do_time,interface_son_type,ret_code,ret_msg)
+  values
+  (#{messageId,jdbcType=CHAR},#{seenumber,jdbcType=CHAR},#{fromuser},#{fromsystem},#{fromsystemid},#{fromtime},#{callbackurl},#{interfaceurl},#{bodystr},#{dotype},now(),#{interfacesontype,jdbcType=CHAR},#{retcode},#{retmsg})
+  </insert>
+  <select id="queryTaskLog" parameterType="java.util.Map" resultType="java.util.Map">
+ 	 SELECT taskLog.message_id,
+		taskLog.see_number,
+		taskLog.from_user,
+		taskLog.from_system ,
+		taskLog.from_system_id,
+		DATE_FORMAT(taskLog.from_time, '%Y-%m-%d %T') from_time,
+		taskLog.call_back_url,
+		taskLog.interface_url,
+		replace(taskLog.parameters,'\\\"','\"') parameters,
+		taskLog.do_type,
+		DATE_FORMAT(taskLog.do_time, '%Y-%m-%d %T') do_time,
+		taskLog.interface_son_type,
+		taskLog.ret_code,
+		taskLog.ret_msg FROM `interface_task_log` taskLog where 1=1
+			<if test="messageId!=null and messageId!=''">
+				and taskLog.message_id like CONCAT('%',#{messageId,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="seeNumber!=null and seeNumber!=''">
+				and taskLog.see_number like CONCAT('%',#{seeNumber,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="fromUser!=null and fromUser!=''">
+				and taskLog.from_user  like CONCAT('%',#{fromUser,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="fromSystem!=null and fromSystem!=''">
+				and taskLog.from_system  like CONCAT('%',#{fromSystem,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="interfaceSonType!=null and interfaceSonType!=''">
+				and taskLog.interface_son_type  like CONCAT('%',#{interfaceSonType,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="fromSystemId!=null and fromSystemId!=''">
+				and taskLog.from_system_id  like CONCAT('%',#{fromSystemId,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="doType!=null and doType!=''">
+				and taskLog.do_type  like CONCAT('%',#{doType,jdbcType=VARCHAR},'%') 
+			</if>
+			<if test="retCode!=null and retCode!=''">
+				and taskLog.ret_code  like CONCAT('%',#{retCode,jdbcType=VARCHAR},'%') 
+			</if>
+			<!-- 	添加的时间-->
+			<if test="addStartTime!= null and addStartTime!=''">
+				and DATE_FORMAT(taskLog.from_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{addStartTime}, '%Y-%m-%d %T')
+			</if>
+			<if test="addEndTime!= null and addEndTime!=''">
+				and DATE_FORMAT(taskLog.from_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{addEndTime}, '%Y-%m-%d %T')
+			</if>
+			<!-- 	执行时间 -->
+			<if test="executeStartTime!= null and executeStartTime!=''">
+				and DATE_FORMAT(taskLog.do_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{executeStartTime}, '%Y-%m-%d %T')
+			</if>
+			<if test="executeEndTime!= null and executeEndTime!=''">
+				and DATE_FORMAT(taskLog.do_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{executeEndTime}, '%Y-%m-%d %T')
+			</if>
+  </select>
+  <select id="queryLog" parameterType="java.util.Map" resultType="java.util.Map">
+   SELECT taskLog.MESSAGE_ID,
+		taskLog.SEE_NUMBER,
+		taskLog.FROM_USER,
+		taskLog.FROM_SYSTEM ,
+		taskLog.FROM_SYSTEM_ID,
+		DATE_FORMAT(taskLog.FROM_TIME, '%Y-%m-%d %T') FROM_TIME,
+		taskLog.CALL_BACK_URL,
+		taskLog.INTERFACE_URL,
+		replace(taskLog.PARAMETERS,'\\\"','\"') PARAMETERS,
+		taskLog.DO_TYPE,
+		DATE_FORMAT(taskLog.DO_TIME, '%Y-%m-%d %T') DO_TIME,
+		taskLog.INTERFACE_SON_TYPE,
+		taskLog.RET_CODE,
+		taskLog.RET_MSG FROM `interface_task_log` taskLog where 1=1
+		<if test="messageId!=null and messageId!=''"> 
+				and taskLog.MESSAGE_ID =#{messageId,jdbcType=VARCHAR} 
+		</if>
+		<if test="seeNumber!=null and seeNumber!=''">
+				and taskLog.SEE_NUMBER =#{seeNumber,jdbcType=VARCHAR} 
+		</if>
+		<if test="(seeNumber==null or seeNumber=='') and (messageId==null or messageId=='')">
+			limit 0,0
+		</if>
+  </select>
+  <select id="flowMonitoring" parameterType="java.util.HashMap" resultType="java.lang.Integer"> 
+		 select count(IFNULL(flow.state,0)) state from(
+		
+		SELECT 1 state 
+		from interface_flow_monitoring_parameter par ,(
+		select interface_son_type,count(1) num
+		from interface_task_log 
+		where interface_task_log.from_system_id=#{systemid,jdbcType=VARCHAR} and interface_task_log.from_time  between  DATE_FORMAT(date_add(#{now,jdbcType=VARCHAR},interval -1 hour), '%Y-%m-%d %T')and DATE_FORMAT(#{now,jdbcType=VARCHAR}, '%Y-%m-%d %T')
+		group by interface_son_type) log where log.interface_son_type="email_html_sync"  and log.interface_son_type=par.interface_son_type and log.num>par.hour_number-1
+		union ALL
+		SELECT 1 state 
+		from interface_flow_monitoring_parameter par ,(
+		select interface_son_type,count(1) num
+		from interface_task_log 
+		where interface_task_log.from_system_id=#{systemid,jdbcType=VARCHAR} and interface_task_log.from_time  between  DATE_FORMAT(#{flowMonth,jdbcType=VARCHAR}, '%Y-%m-%d %T')and DATE_FORMAT(#{now,jdbcType=VARCHAR}, '%Y-%m-%d %T')
+		group by interface_son_type) log where log.interface_son_type="email_html_sync" and log.interface_son_type=par.interface_son_type and log.num>par.month_numbe-1
+		
+		union ALL
+		SELECT 1 state 
+		from interface_flow_monitoring_parameter par,(
+		select interface_son_type,count(1) num
+		from interface_task_log 
+		where interface_task_log.from_system_id=#{systemid,jdbcType=VARCHAR} and interface_task_log.from_time  between  DATE_FORMAT(#{flowDay,jdbcType=VARCHAR}, '%Y-%m-%d %T')and DATE_FORMAT(#{now,jdbcType=VARCHAR}, '%Y-%m-%d %T')
+		group by interface_son_type) log where log.interface_son_type="email_html_sync" and log.interface_son_type=par.interface_son_type and log.num>par.day_number-1 
+		union ALL
+		SELECT 1 state 
+		from interface_flow_monitoring_parameter par ,(
+		select interface_son_type,count(1) num
+		from interface_task_log 
+		where interface_task_log.from_system_id=#{systemid,jdbcType=VARCHAR} and interface_task_log.from_time  between  DATE_FORMAT(date_add(#{now,jdbcType=VARCHAR},interval -15 minute), '%Y-%m-%d %T')and DATE_FORMAT(#{now,jdbcType=VARCHAR}, '%Y-%m-%d %T')
+		group by interface_son_type) log where log.interface_son_type="email_html_sync"  and log.interface_son_type=par.interface_son_type and log.num>par.interval_minute-1
+		
+		) flow
+  </select>
+  <update id="updateFromRepeatSendTask" parameterType="String">
+   <![CDATA[ update interface_task_log log 
+    set do_time=now(),
+    ret_code=(select state from interface_repeat_send_task task where log.message_id=task.message_id and task.message_id=#{messageId}),
+    ret_msg=(
+          select (case when state=1 then '请求成功' else case when invoking_count<3 then '程序发生异常原因，请5分钟后再查询结果' else '请求失败' end end) ret_msg 
+          from interface_repeat_send_task task 
+          where log.message_id=task.message_id and task.message_id=#{messageId}
+          )
+    where exists(select 1 
+                 from interface_repeat_send_task task 
+                 where log.message_id=task.message_id and task.message_id=#{messageId})]]>
+  </update>
+  </mapper>

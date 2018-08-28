@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.DictionaryMapper"> 
+<select id="queryAllInterfaceSonType" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+SELECT dictionary.dict_name name,dictionary.dict_type interfaceSonType, dictionary.dict_parent_id parentId, dict_id id FROM `dictionary`
+where  dictionary.dict_parent_id=#{parentId,jdbcType=INTEGER}
+</select>
+</mapper>

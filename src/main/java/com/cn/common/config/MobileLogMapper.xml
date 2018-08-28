@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.MobileLogMapper"> 
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="queryAllMobileLog" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+			SELECT
+			*
+		FROM
+			(
+				SELECT
+					mobile.sysid sysid,
+					mobile.from_system sysName,
+					'定时' way,
+					mobile.para_phone Phone,
+					mobile.para_context Context,
+					DATE_FORMAT(mobile.from_time, '%Y-%m-%d %T') startTime,
+					DATE_FORMAT(mobilelog.end_time, '%Y-%m-%d %T') endTime,
+					mobilelog.retcode errCode,
+					CASE
+				WHEN mobilelog.retcode IS NULL THEN
+					'等待发送'
+				ELSE
+					mobilelog.retmsg
+				END msg
+				FROM
+					interface_mobile mobile
+				LEFT JOIN interface_mobile_log mobilelog ON mobile.sysid = mobilelog.interface_mobile_id
+				<where>
+				<if test="1==1">
+				1=1
+				</if>
+				<if test="sysName!=null and sysName!=''">
+				and mobilelog.from_system =#{sysName,jdbcType=VARCHAR} 
+				</if>
+				<if test="state!=null and state!=''">
+					<if test='state=="待发送"'>
+					and mobilelog.retcode is null
+					</if>
+					<if test='state=="成功"'>
+					and mobilelog.retcode = 0
+					</if>
+					<if test='state=="失败"'>
+					and mobilelog.retcode ！= 0
+					</if>
+				</if>
+				<if test="Context!=null and Context!=''">
+				and mobile.para_context like CONCAT('%',#{Context,jdbcType=VARCHAR},'%')
+				</if>
+				<if test="Phone!=null and Phone!=''">
+				and mobile.para_phone like CONCAT('%',#{Phone,jdbcType=VARCHAR},'%')
+				</if>
+				<!-- 	添加的时间-->
+				<if test="addStartTime!= null and addStartTime!=''">
+				and DATE_FORMAT(mobile.from_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{addStartTime}, '%Y-%m-%d %T')
+				</if>
+				<if test="addEndTime!= null and addEndTime!=''">
+				and DATE_FORMAT(mobile.from_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{addEndTime}, '%Y-%m-%d %T')
+				</if>
+				<!-- 	执行时间 -->
+				<if test="executeStartTime!= null and executeStartTime!=''">
+				and DATE_FORMAT(mobilelog.end_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{executeStartTime}, '%Y-%m-%d %T')
+				</if>
+				<if test="executeEndTime!= null and executeEndTime!=''">
+				and DATE_FORMAT(mobilelog.end_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{executeEndTime}, '%Y-%m-%d %T')
+				</if>
+			</where>
+				UNION
+					SELECT
+						log.log_id sysid,
+						log.from_system sysName,
+						'即时' way,
+						'' phone,
+						log.interface_parameter context,
+						DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T') startTime,
+						DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T') endTime,
+						log.invoking_state errCode,
+						log.state_msg msg
+					FROM
+						`log_manage` log where log.interface_type ='短信'
+							<if test="sysName!=null and sysName!=''">
+							and log.from_system =#{sysName,jdbcType=VARCHAR} 
+							</if>
+							<if test="state!=null and state!=''">
+								<if test='state=="待发送"'>
+								and log.retcode is null
+								</if>
+								<if test='state=="成功"'>
+								and log.retcode = 0
+								</if>
+								<if test='state=="失败"'>
+								and log.retcode ！= 0
+								</if>
+							</if>
+						<if test="Content!=null and Content!=''">
+						and log.interface_parameter like CONCAT('%"Context":"%',#{Context,jdbcType=VARCHAR},'%"%')
+						</if>
+						<if test="Phone!=null and Phone!=''">
+						and log.interface_parameter like CONCAT('%"Phone":"%',#{Phone,jdbcType=VARCHAR},'%"%')
+						</if>
+						<!-- 	添加的时间-->
+						<if test="addStartTime!= null and addStartTime!=''">
+						and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{addStartTime}, '%Y-%m-%d %T')
+						</if>
+						<if test="addEndTime!= null and addEndTime!=''">
+						and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{addEndTime}, '%Y-%m-%d %T')
+						</if>
+						<!-- 	执行时间 -->
+						<if test="executeStartTime!= null and executeStartTime!=''">
+						and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{executeStartTime}, '%Y-%m-%d %T')
+						</if>
+						<if test="executeEndTime!= null and executeEndTime!=''">
+						and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{executeEndTime}, '%Y-%m-%d %T')
+						</if>
+			) logQuery
+		ORDER BY
+			logQuery.endTime DESC
+  </select>
+  
+  
+  <select id="queryDetailsLog" parameterType="String" resultType="java.util.HashMap">
+  
+		SELECT
+			mobile.sysid sysid,
+			mobile.from_system sysName,
+			'定时' way,
+			mobile.para_phone phone,
+			mobile.para_context context,
+			DATE_FORMAT(mobile.from_time, '%Y-%m-%d %T') startTime,
+			DATE_FORMAT(mobilelog.end_time, '%Y-%m-%d %T') endTime,
+			mobilelog.retcode errCode,
+			mobile.see_number seeNumber,
+			mobile.url,
+			mobile.para_model_code modelCode,
+			mobile.from_system_id fromSysId,
+			CASE
+		WHEN mobilelog.retcode IS NULL THEN
+			'等待发送'
+		ELSE
+			mobilelog.retmsg
+		END msg
+		FROM
+			interface_mobile mobile
+		LEFT JOIN interface_mobile_log mobilelog ON mobile.sysid = mobilelog.interface_mobile_id
+		where mobile.sysid = #{sysid,jdbcType=INTEGER} 
+  
+  </select>
+</mapper>

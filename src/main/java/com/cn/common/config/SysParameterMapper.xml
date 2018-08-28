@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致
+   5)开启二级缓存，最好开在单表操作上，避免脏数据的出现，insert,update,delete操作时要刷新缓存
+     flushCache=“true“：刷新缓存
+     useCache="false"：禁用缓存	
+ --> 
+<mapper namespace="com.cn.common.dao.SysParameterMapper"> 
+<!-- 代表当前namespace开启缓存。半个小时刷新一下缓存 -->
+<cache eviction="FIFO"  flushInterval="300000"  size="512" ></cache>
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="findBySysTypeAll" parameterType="String" resultType="java.util.HashMap">
+     select sys_name sysname,sys_value sysvalue
+     from sys_parameter
+     where sys_type=#{sysType,jdbcType=VARCHAR}
+  </select>
+  <insert id="addSysParameter" parameterType="java.util.HashMap" flushCache="true">
+	INSERT INTO sys_parameter (
+		sys_name,
+		sys_type,
+		sys_value,
+		sys_msg
+	)
+	VALUES
+		(
+			#{sysName,jdbcType=VARCHAR},
+			#{sysType,jdbcType=VARCHAR},
+			#{sysValue,jdbcType=VARCHAR},
+			#{sysMsg,jdbcType=VARCHAR}
+		)
+  </insert>
+<delete id="deleteSysParameter" parameterType="java.util.HashMap" flushCache="true">
+	DELETE from sys_parameter WHERE sysid=#{sysid,jdbcType=INTEGER}
+</delete>
+<update id="updateSysParameter" parameterType="java.util.HashMap" flushCache="true">
+	UPDATE  sys_parameter SET
+		sys_name =#{sysName,jdbcType=VARCHAR},
+		sys_type=#{sysType,jdbcType=VARCHAR},
+		sys_value=#{sysValue,jdbcType=VARCHAR},
+		sys_msg=#{sysMsg,jdbcType=VARCHAR}
+	where sysid=#{sysid,jdbcType=INTEGER}
+</update>
+
+<select id="queryAllSysParameter" resultType="java.util.HashMap" parameterType="java.util.HashMap" >
+	SELECT
+		sysid,
+		sys_name sysName,
+		sys_type sysType,
+		sys_value sysValue,
+		sys_msg sysMsg
+	FROM
+		sys_parameter  where 1=1
+		<if test="sysType!=null and sysType!=''">
+			and sys_parameter.sys_type  like CONCAT('%',#{sysType,jdbcType=VARCHAR},'%')  
+		</if>
+</select>
+
+<select id="isRepeatSysName" parameterType="java.util.HashMap" resultType="String">
+	SELECT
+		CASE
+	WHEN COUNT(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	END state
+	FROM
+		sys_parameter
+	WHERE
+		sys_name = #{sysName,jdbcType=VARCHAR} 
+		and  
+		sys_type = #{sysType,jdbcType=VARCHAR} 
+</select>
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址,也就是dao下面的java类，通过这个java类，可以访问类里定义的方法
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.InterfaceRepeatSendTaskMapper"> 
+
+
+
+  <!-- 插入任务记录 -->
+  <insert id="insert" parameterType="java.util.Map">
+  insert into interface_repeat_send_task(message_id,do_time,interface_url,content,invoking_counts,invoking_count,state)
+  values(#{messageId,jdbcType=CHAR},now(),#{interface_url,jdbcType=CHAR},#{content,jdbcType=CHAR},3,1,0)
+  </insert>
+   <!-- 获取为成功，同时没有执行三次满的记录 -->
+  <select id="getNotSucceedTask" resultType="java.util.Map">
+  select message_id messageId,interface_url interfaceurl,content as data
+  from interface_repeat_send_task
+  where state=0 and invoking_count &lt; invoking_counts
+  </select>
+  <!-- 修改重发记录任务 -->
+  <update id="updateNotSuccedTask" parameterType="java.util.Map">
+  update interface_repeat_send_task set state=#{state},do_time=now(),invoking_count=invoking_count+1
+  where message_id=#{messageId,jdbcType=CHAR}
+  </update>
+
+</mapper>

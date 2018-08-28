@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mModeler.xml 规范 ：
+   1)namespace 等于mModeler接口地址
+   2)mModeler.Java 接口中的方法和mModeler.xml中的statement 的id一致
+   3)mModeler.java 接口中的方法的参数和mModeler.xml中的statement 的paramterType类型一致
+   4)mModeler.java 接口中的方法的返回值和mModeler.xml中的statement的resultType类型一致	
+   5)开启二级缓存，最好开在单表操作上，避免脏数据的出现，insert,update,delete操作时要刷新缓存
+     flushCache=“true“：刷新缓存
+     useCache="false"：禁用缓存
+ --> 
+<mapper namespace="com.cn.common.dao.ModelMapper"> 
+<!-- 代表当前namespace开启缓存。半个小时刷新一下缓存 -->
+<cache eviction="FIFO"  flushInterval="300000"  size="512" ></cache>
+
+
+<select id="queryAllModel" resultType="java.util.HashMap" parameterType="java.util.HashMap" useCache="false">
+
+	SELECT
+		models.model_name modelName,
+		models.model_id modelId,
+		models.model_content content,
+		models.model_type modelType,
+		models.user_id userId,
+		users.user_name userName,
+		models.system_id systemId,
+		apps.appname,
+		models.state  state,
+	 models.remark,
+	 DATE_FORMAT(models.create_time, '%Y-%m-%d %T') createTime
+	FROM
+		(select models.* from models,app_model ,apps where models.model_id =app_model.model_id  and apps.appid=#{systemId,jdbcType=VARCHAR} and apps.sysid=app_model.app_id
+union select * from models where models.system_id=#{systemId,jdbcType=VARCHAR}  or EXISTS (select  1 from users where users.account="admin" and user_id=#{userId,jdbcType=INTEGER}))models
+	LEFT JOIN users ON models.user_id = users.user_id 
+	 LEFT JOIN apps on models.system_id=apps.appid 
+		<if test="modelId!=null and modelId!=''">
+		and models.model_id like CONCAT('%',#{modelId,jdbcType=VARCHAR},'%')  
+		</if>
+		<if test="modelName!=null and modelName!=''">
+		and models.model_name  like CONCAT('%',#{modelName,jdbcType=VARCHAR},'%')  
+		</if>
+
+</select>
+
+<update id="updateModel" parameterType="java.util.HashMap" flushCache="true">
+	UPDATE `models`
+	SET  model_name = #{modelName,jdbcType=VARCHAR},
+			 model_content = #{content,jdbcType=VARCHAR},
+			 model_type = #{modelType,jdbcType=VARCHAR},
+			 state = #{state,jdbcType=INTEGER},
+			 remark = #{remark,jdbcType=VARCHAR},
+			 system_id=#{systemId,jdbcType=VARCHAR}
+	WHERE
+		model_id = #{modelId,jdbcType=VARCHAR}
+
+</update>
+
+<insert id="addModel" parameterType="java.util.HashMap" flushCache="true">
+
+	INSERT INTO models (
+		model_name,
+		model_id,
+		system_id,
+		model_content,
+		model_type,
+		state,
+		user_id,
+		remark,
+		create_time
+	)
+	VALUES(
+		#{modelName,jdbcType=VARCHAR},
+		#{modelId,jdbcType=VARCHAR},
+		#{systemId,jdbcType=VARCHAR},
+		#{content,jdbcType=VARCHAR},
+		#{modelType,jdbcType=VARCHAR},
+		#{state,jdbcType=INTEGER},
+		#{userId,jdbcType=INTEGER},
+		#{remark,jdbcType=VARCHAR},
+		now())
+</insert>
+<delete id="deleteModel" parameterType="java.util.HashMap" flushCache="true">
+		DELETE
+		FROM
+			models
+		WHERE
+			model_id =#{modelId,jdbcType=VARCHAR}
+
+</delete>
+<select id="isRepeatModelId" parameterType="java.util.HashMap" resultType="String">
+		
+		SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`models`
+		WHERE
+			model_id= #{modelId,jdbcType=VARCHAR}
+ </select>
+ <select id="isRepeatModelName" parameterType="java.util.HashMap" resultType="String">
+		SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`models`
+		WHERE
+			model_name= #{modelName,jdbcType=VARCHAR}
+</select>
+<!-- 通过模版编号获取模版内容 -->
+ <select id="findModelContent" parameterType="java.util.HashMap" resultType="String">
+		select model_content
+		from models
+		where model_id= #{modelcode,jdbcType=VARCHAR} and  state!=0
+</select>
+</mapper>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.AppModelMapper"> 
+
+<select id="queryAllAppAndModelAmount" resultType="java.util.HashMap">
+	SELECT
+		apps.sysid,
+		apps.appid,
+		apps.appname,
+		IFNULL(t.count, 0) modelAmount
+	FROM
+		apps
+	LEFT JOIN  (
+		SELECT
+			app_model.app_id,
+			count(1) count
+		FROM
+			app_model
+		GROUP BY
+			app_model.app_id
+	) t  ON apps.sysid = t.app_id
+
+</select>
+<select id="queryModelNotInApp" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+		SELECT
+		models.model_id modelId,
+		models.model_name modelName
+	FROM
+		models
+	WHERE
+		models.model_id  not IN (
+			SELECT
+				model_id
+			FROM
+				app_model
+			WHERE
+				app_id = 23
+union select models.model_id from models,apps where apps.appid=models.system_id and apps.sysid=23
+	)
+
+</select>
+<select id="queryModelInApp" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+			SELECT
+		models.model_id modelId,
+		models.model_name modelName
+	FROM
+		models
+	WHERE
+		models.model_id   IN (
+			SELECT
+				model_id
+			FROM
+				app_model
+			WHERE
+				app_id = 23
+union select models.model_id from models,apps where apps.appid=models.system_id and apps.sysid=23
+	)
+
+
+</select>
+<insert id="addAllAppModel"  parameterType="java.util.List">
+	insert into app_model
+			VALUES
+			<foreach collection="list" item="item" index="index" separator=",">
+				(#{item.appId,jdbcType=INTEGER}, #{item.modelId,jdbcType=VARCHAR})
+			</foreach>
+</insert>
+<delete id="deleteAllAppModel"  parameterType="java.util.HashMap">
+	DELETE
+	FROM
+		app_model
+	WHERE
+		app_id = #{appId,jdbcType=INTEGER}
+</delete>
+<delete id="deleteAppModel"  parameterType="java.util.HashMap">
+	DELETE
+	FROM
+		app_model
+	WHERE
+		app_id = #{appId,jdbcType=INTEGER} and  model_id=#{modelId,jdbcType=VARCHAR}
+</delete>
+
+<insert id="addAppModel"  parameterType="java.util.HashMap">
+	insert into app_model
+			VALUES
+				(#{appId,jdbcType=INTEGER}, #{modelId,jdbcType=VARCHAR})
+			
+</insert>
+
+<select id="isExistAppAtModel" parameterType="java.util.HashMap" resultType="String">
+	SELECT
+		CASE
+	WHEN count(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	END
+	FROM
+		`app_model`
+	WHERE
+		model_id = #{modelId,jdbcType=INTEGER}
+
+</select>
+</mapper>

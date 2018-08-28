@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+
+ 
+<mapper namespace="com.cn.common.dao.AppInterfaceMapper"> 
+<select id="queryAllAppAndInterfaceAmount" resultType="java.util.HashMap">
+	SELECT
+		apps.sysid,
+		apps.appid,
+		apps.appname,
+		IFNULL(t.count, 0) interfaceAmount
+	FROM
+		apps
+	LEFT JOIN  (
+		SELECT
+			app_interface.app_id,
+			count(1) count
+		FROM
+			app_interface
+		GROUP BY
+			app_interface.app_id
+	) t  ON apps.sysid = t.app_id
+</select>
+<select id="queryInterfaceInApp" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+
+	SELECT
+		interfaces.interface_id interfaceId,
+		interfaces.interface_name interfaceName
+	FROM
+		interfaces
+	WHERE
+		interfaces.interface_id IN (
+			SELECT
+				interface_id
+			FROM
+				app_interface
+			WHERE
+				app_id = #{appId,jdbcType=INTEGER}
+		)
+</select>
+<select id="queryInterfaceNotInApp" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+	SELECT
+		interfaces.interface_id interfaceId,
+		interfaces.interface_name interfaceName
+	FROM
+		interfaces
+	WHERE
+		interfaces.interface_id NOT IN (
+			SELECT
+				interface_id
+			FROM
+				app_interface
+			WHERE
+				app_id = #{appId,jdbcType=INTEGER}
+		)
+</select>
+<insert id="addAllAppInterface"  parameterType="java.util.List">
+
+		insert into app_interface values
+			<foreach collection="list" item="item" index="index" separator=",">
+				(#{item.appId,jdbcType=INTEGER}, #{item.interfaceId,jdbcType=INTEGER})
+			</foreach>
+</insert>
+<delete id="deleteAllAppInterface"  parameterType="String">
+	DELETE
+	FROM
+		app_interface
+	WHERE
+		app_id = #{appId,jdbcType=INTEGER}
+</delete>
+<insert id="addAppInterface"  parameterType="java.util.HashMap">
+		insert into app_interface (#{appId,jdbcType=INTEGER}, #{interfaceId,jdbcType=INTEGER})
+</insert>
+<delete id="deleteAppInterface"  parameterType="java.util.HashMap">
+	DELETE
+	FROM
+		app_interface
+	WHERE
+		app_id = #{appId,jdbcType=INTEGER} and interface_id =#{interfaceId,jdbcType=INTEGER}
+</delete>
+
+<select id="isExistAppAtInterface" parameterType="java.util.HashMap" resultType="String">
+	SELECT
+		CASE
+	WHEN count(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	END
+	FROM
+		`app_interface`
+	WHERE
+		interface_id = #{interfaceId,jdbcType=INTEGER}
+</select>
+</mapper>

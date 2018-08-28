@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- @author chen.kai mapper.xml 规范 ： 1)namespace 等于mapper接口地址 2)mapper.Java 
+	接口中的方法和mapper.xml中的statement 的id一致 3)mapper.java 接口中的方法的参数和mapper.xml中的statement 
+	的paramterType类型一致 4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致 -->
+<mapper namespace="com.cn.common.dao.InterfaceMapper">
+
+	<select id="queryAllInterface" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT
+			interface_id interfaceId,
+			interface_name interfaceName,
+			interface_url interfaceUrl,
+			get_post getPost,
+			interface_type interfaceType,
+			d.dict_name typeName,
+			interface_son_type interfaceSonType,
+			dictionary.dict_name  sonTypeName,
+			interface_msg interfaceMsg,
+			call_mode callMode
+		FROM
+			interfaces  LEFT JOIN dictionary ON interfaces.interface_son_type=dictionary.dict_type
+ 		LEFT JOIN dictionary d ON interfaces.interface_type=d.dict_type where 1=1
+				<if test="interfaceType!=null and interfaceType!=''">
+					and interfaces.interface_type like CONCAT('%',#{interfaceType,jdbcType=VARCHAR},'%')
+				</if>
+				<if test="interfaceName!=null and interfaceName!=''">
+					and interfaces.interface_name like CONCAT('%',#{interfaceName,jdbcType=VARCHAR},'%') 
+				</if>
+	</select>
+	
+	<select id="queryAllInterfaceName" resultType="java.util.HashMap">
+	SELECT
+		interface_id interfaceId,
+		interface_name interfaceName
+		FROM
+			interfaces
+	</select>
+	<insert id="addInterface" parameterType="java.util.HashMap">
+		INSERT INTO interfaces (
+			interface_name,
+			interface_url,
+			get_post,
+			interface_type,
+			interface_son_type,
+			interface_msg,
+			call_mode
+		)
+		VALUES
+			(
+				#{interfaceName,jdbcType=VARCHAR},
+				#{interfaceUrl,jdbcType=VARCHAR},
+				#{getPost,jdbcType=VARCHAR},
+				#{interfaceType,jdbcType=VARCHAR},
+				#{interfaceSonType,jdbcType=VARCHAR},
+				#{interfaceMsg,jdbcType=VARCHAR},
+				#{callMode,jdbcType=VARCHAR}
+			)
+		
+	</insert>
+	<delete id="deleteInterface" parameterType="java.util.HashMap">
+		DELETE
+		FROM
+			interfaces
+		WHERE
+			interface_id = #{interfaceId,jdbcType=INTEGER}
+	</delete>
+	<update id="updateInterface" parameterType="java.util.HashMap">
+		UPDATE interfaces SET 
+			interface_name=#{interfaceName,jdbcType=VARCHAR},
+			interface_url=#{interfaceUrl,jdbcType=VARCHAR},
+			get_post=#{getPost,jdbcType=VARCHAR},
+			interface_type=#{interfaceType,jdbcType=VARCHAR},
+			interface_son_type=#{interfaceSonType,jdbcType=VARCHAR},
+			interface_msg=#{interfaceMsg,jdbcType=VARCHAR},
+			call_mode=#{callMode,jdbcType=VARCHAR}
+		WHERE interface_id=#{interfaceId,jdbcType=INTEGER}
+	</update>
+	<select id="queryInterfaceSonType" parameterType="java.util.HashMap" resultType="String">
+		SELECT interfaces.interface_son_type from interfaces where interface_url =TRIM(#{url,jdbcType=VARCHAR})
+	</select>
+	
+	<select id="getUrlAndInterfaceSonType" resultType="java.util.HashMap">
+		SELECT interfaces.interface_son_type type, interfaces.interface_url url from interfaces 
+	</select>
+	
+</mapper>

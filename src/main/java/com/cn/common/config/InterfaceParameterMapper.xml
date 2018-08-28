@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.InterfaceParameterMapper"> 
+ <select id="queryAllInterfaceParameter" resultType="java.util.HashMap"  parameterType="java.util.HashMap">
+		SELECT
+			pa.parameter_id parameterId,
+			pa.parameter_name parameterName,
+			pa.parameter_data_type dataType,
+			pa.parameter_type parameterType ,
+			pa.is_must  isMust,
+			pa.parameter_msg parameterMsg,
+			pa.interface_id interfaceId,
+			interfaces.interface_name interfaceName
+		FROM
+			interface_parameters pa LEFT JOIN 
+			interfaces
+		ON	pa.interface_id = interfaces.interface_id where 1=1
+		<if test="parameterName!=null and parameterName!=''">
+		and pa.parameter_name  like CONCAT('%',#{parameterName,jdbcType=VARCHAR},'%')  
+		</if>
+		
+</select>
+
+
+<insert id="addInterfaceParameter" parameterType="java.util.HashMap">
+	INSERT INTO interface_parameters (
+		parameter_name,
+		parameter_data_type,
+		parameter_type,
+		is_must,
+		parameter_msg,
+		interface_id
+	)
+	VALUES
+		(#{parameterName,jdbcType=VARCHAR},
+		#{dataType,jdbcType=VARCHAR},
+		#{parameterType,jdbcType=INTEGER},
+		#{isMust,jdbcType=INTEGER},
+		#{parameterMsg,jdbcType=VARCHAR},
+		#{interfaceId,jdbcType=INTEGER})
+
+</insert>
+
+<update id="updateInterfaceParameter" parameterType="java.util.HashMap">
+
+	UPDATE interface_parameters
+	SET  parameter_name=#{parameterName,jdbcType=VARCHAR},
+		 parameter_data_type=#{dataType,jdbcType=VARCHAR},
+		 parameter_type=#{parameterType,jdbcType=INTEGER},
+		 is_must=#{isMust,jdbcType=INTEGER},
+		 parameter_msg=#{parameterMsg,jdbcType=VARCHAR},
+		 interface_id=#{interfaceId,jdbcType=INTEGER}
+	  	where parameter_id=#{parameterId,jdbcType=INTEGER}
+	
+</update>
+<delete id="deleteInterfaceParameter" parameterType="java.util.HashMap">
+	DELETE FROM interface_parameters WHERE parameter_id=#{parameterId,jdbcType=INTEGER}
+</delete>
+<select id="isRepeatParameterName" parameterType="java.util.HashMap" resultType="String">
+	SELECT
+		CASE
+	WHEN COUNT(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	end state
+	FROM
+		interface_parameters
+	WHERE
+		interface_id = #{interfaceId,jdbcType=INTEGER}
+	AND parameter_name = #{parameterName,jdbcType=VARCHAR}
+</select>
+<select id="queryInterfaceParametersBySysId" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+	SELECT
+		pa.parameter_id parameterId,
+		pa.parameter_name parameterName,
+		pa.parameter_data_type dataType,
+		pa.parameter_type parameterType ,
+		pa.is_must isMust,
+		pa.parameter_msg parameterMsg
+	FROM
+		interface_parameters pa
+	WHERE
+		pa.interface_id = #{interfaceId,jdbcType=INTEGER}
+</select>
+
+</mapper>

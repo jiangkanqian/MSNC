@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:c="http://www.springframework.org/schema/c"
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+      <!-- chen.kai  2017-03-07 redis配置文件 -->
+    
+     <!-- redis连接池配置,jedis进行管理 -->
+      <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">  
+        <!-- 最大闲置数量 -->
+        <property name="maxIdle" value="8" />
+        <!-- 最小限制数量 -->
+        <property name="minIdle" value="1" /> 
+        <property name="maxActive" value="8" />
+        <property name="maxWait" value="30000" />        
+        <!-- 检查redis是否正常连接 -->
+        <property name="testOnBorrow" value="true" />
+    </bean>
+    
+    <!-- 配置session,实现session共享 -->
+    <bean class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration">
+         <!-- 设置session过期时间 -->
+         <property name="maxInactiveIntervalInSeconds" value="3600" />
+    </bean>
+    
+    <!-- redis连接工厂   这里的id一定要和其余的class的id区分开，否则会报错 -->
+    <bean id="JedisConnectionFactory" class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory" >
+        <constructor-arg index="0" ref="jedisPoolConfig" />
+        <property name="hostName" value="${redis.host}" />
+        <property name="port" value="${redis.port}" />
+        <property name="password" value="${redis.password}" />
+        <property name="timeout" value="30000" />
+    </bean>
+    
+    <!-- redis消息模版，使用redis缓存必备 -->
+    <bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate" > 
+	     <property name="connectionFactory" ref="JedisConnectionFactory" /> 
+	     <property name="keySerializer" > 
+	       <bean class="org.springframework.data.redis.serializer.StringRedisSerializer" /> 
+	     </property> 
+	     <property name="valueSerializer" > 
+	       <bean class="org.springframework.data.redis.serializer.JdkSerializationRedisSerializer" /> 
+	     </property> 
+    </bean >  
+
+    <!-- redis缓存配置 -->
+    <bean id="cacheManager" class="org.springframework.data.redis.cache.RedisCacheManager" c:template-ref="redisTemplate" />
+    
+    <!-- redis集群配置 
+    <bean id="shardedJedisPool" class="redis.clients.jedis.ShardedJedisPool" destroy-method="destroy">
+        <constructor-arg ref="jedisPoolConfig"/> 
+        <constructor-arg>
+            <list> 
+	           <bean class="redis.clients.jedis.JedisShardInfo"> 
+	               <constructor-arg index="0" value="127.0.0.1"/>
+	               <constructor-arg index="1" value="6379"/>
+	               <constructor-arg index="2" value="instance:01"/>
+	           </bean>
+ 
+	           <bean class="redis.clients.jedis.JedisShardInfo">
+	               <constructor-arg index="0" value="127.0.0.1"/>
+	               <constructor-arg index="1" value="6380"/>
+	               <constructor-arg index="2" value="instance:02"/>
+	           </bean> 
+
+            </list>
+        </constructor-arg>
+      </bean>
+        -->
+        <!--java帮我们同步sentinel的信息，将主从信息同步到客户端来，需要在redis里面设置
+	  <bean class="redis.clients.jedis.JedisSentinelPool">
+	       <constructor-arg index="0" value="mymaster"/>
+	       <constructor-arg index="1">
+	           <set>
+	               <value>${redis.uri}</value>
+	           </set>
+	       </constructor-arg>
+	       <constructor-arg index="2" ref="jedisPoolConfig"/>
+	       <constructor-arg index="3" value="${redis.timeout}"/>
+	   </bean>-->
+</beans>

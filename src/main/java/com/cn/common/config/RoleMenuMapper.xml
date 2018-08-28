@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- @author chen.kai mapper.xml 规范 ： 1)namespace 等于mapper接口地址 2)mapper.Java 
+	接口中的方法和mapper.xml中的statement 的id一致 3)mapper.java 接口中的方法的参数和mapper.xml中的statement 
+	的paramterType类型一致 4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致 -->
+<mapper namespace="com.cn.common.dao.RoleMenuMapper">
+
+	<select id="isExistRoleAtMenu" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT  CASE
+			WHEN count(1) = 0 THEN
+				'false'
+			ELSE
+				'true'
+			END
+		FROM
+			`role_menus`
+		WHERE
+			menus_id = #{menuId,jdbcType=VARCHAR}
+	
+	</select>
+	<insert id="addRoleMenu" parameterType="java.util.List">
+	
+		INSERT INTO `role_menus`
+		VALUES
+		<foreach collection="list" item="item" index="index" separator=",">
+			(#{item.roleId,jdbcType=INTEGER}, #{item.menuId,jdbcType=INTEGER}, #{item.isAll,jdbcType=INTEGER})
+		</foreach>
+	</insert>
+	<delete id="deleteRoleMenu" parameterType="java.util.HashMap">
+		DELETE
+		FROM
+			`role_menus`
+		WHERE
+			role_id = #{roleId,jdbcType=INTEGER}
+
+	</delete>
+	<select id="queryAllRoleAndMenuAmount" resultType="java.util.HashMap">
+				
+			SELECT
+				role.role_id roleId,
+				role_name roleName,
+				CASE
+			WHEN t.is_all = 1 THEN
+				"AllMenu"
+			ELSE
+				IFNULL(t.count, 0)
+			END count
+			
+			FROM
+				role
+			LEFT JOIN (
+				SELECT
+					role_menus.role_id,
+					role_menus.is_all,
+					count(1) count
+				FROM
+					role_menus
+				GROUP BY
+					role_menus.role_id
+			) t ON t.role_id = role.role_id
+	</select>
+	<select id="queryMenuForRole" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		
+	SELECT
+			sm.sysid,
+			sm.menu_name menuName,
+			sm. LEVEL LEVEL,
+			sm.parent_id parentId,
+			sm.url,
+			sm.is_display isDisplay,
+		 sm.remark
+		FROM
+			system_menus sm, role_menus rm
+		WHERE
+		rm.role_id=#{roleId,jdbcType=INTEGER}	and (sm.sysid = rm.menus_id 
+		OR rm.is_all = 1)
+					
+	</select>
+</mapper>

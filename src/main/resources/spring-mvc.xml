@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:tx="http://www.springframework.org/schema/tx" 
+    xmlns:mvc="http://www.springframework.org/schema/mvc"  
+    xmlns:context="http://www.springframework.org/schema/context" 
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd     
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+       http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-3.1.xsd " > 
+    <!--@author chen.kai 2016-10-26 MVC配置文件 -->
+    <!--  通过Web.xml的DispatcherServlet加载 -->
+    <!-- 2. 组件扫描路径配置，让Spring 容器知道需要扫描哪些包路径下可以加载到容器中的类 -->
+    <!--多个扫描路径配置  base-package="com.app,com.core,JUnit4" 也可以写多份,一般直接写多份 -->
+    <!-- 主要作用于@Controller，激活该模式，下面是一种简写形式，完全可以手动配置替代这种简写形式，它会自动注册DefaultAnnotationHandlerMapping与AnnotationMethodHandlerAdapter，是spring MVC为@Controllers分发请求所必须的 -->
+    <!-- 启动注解，注册服务，如验证框架、全局类型转换器-->
+    <mvc:annotation-driven/>
+    <context:component-scan base-package="com.cn.common.web">
+         <context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>      
+    </context:component-scan>
+     <!-- 启动spring事务注解, $该启用必须在springMVC中,而不能在applicationContext.xml中配置,不然事务注解无效$ -->  
+     <!-- 也就是说只有这一行才能真正开启事务,单独地在类或方法上注解@Transaction只是作了事务标记而以-->   
+    <tx:annotation-driven transaction-manager="transactionManager"/> 
+	<!--start:使用Jackson 2.x的配置，需要导入的jar包：jackson-core-xxx.jar、jackson-annotations-xxx.jar、jackson-databind-xxx.jar-->
+	<!--配置注解映射器       DefaultAnnotationHandlerMapping来开启支持@Controller注解-->
+	<!--避免IE执行AJAX时，返回JSON出现下载文件 -->
+	<bean id="mappingJacksonHttpMessageConverter" class="org.springframework.http.converter.json.MappingJacksonHttpMessageConverter">
+		<property name="supportedMediaTypes">
+			<list>
+				  <value>text/html;charset=UTF-8</value>
+	              <value>application/json;charset=UTF-8</value>
+			</list>
+		</property>
+	</bean>
+	<!-- 负责读取字符串格式的数据和写出二进制格式的数据 -->
+    <bean id = "stringHttpMessageConverter" class = "org.springframework.http.converter.StringHttpMessageConverter">
+      <property name="supportedMediaTypes">  
+            <list>  
+                <value>text/plain;charset=UTF-8</value>  
+            </list>  
+        </property>
+    </bean>
+    <!--负责读取二进制格式的数据和写出二进制格式的数据-->
+    <bean id = "byteArrayHttpMessageConverter" class = "org.springframework.http.converter.ByteArrayHttpMessageConverter">
+	    <property name="supportedMediaTypes">  
+	            <list>  
+	                <value>application/octer-stream;charset=UTF-8</value>  
+	            </list>  
+        </property>
+    </bean>
+ 
+	<!-- 启动SpringMVC的注解功能，完成请求和注解POJO的映射 -->
+	<bean class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+		<property name="messageConverters">
+			<list>
+				<ref bean="mappingJacksonHttpMessageConverter" />	<!-- JSON转换器 -->
+				<ref bean="stringHttpMessageConverter" />
+				<ref bean="byteArrayHttpMessageConverter" />
+			</list>
+		</property>
+	</bean>
+	
+	
+	<!--end:使用Jackson 2.x的配置，需要导入的jar包：jackson-core-xxx.jar、jackson-annotations-xxx.jar、jackson-databind-xxx.jar-->
+     <!-- 拦截器 -->
+     <!-- 自定义拦截器 -->
+    <!--  
+        <mvc:interceptors>  
+            <mvc:interceptor>  
+                <mvc:mapping path="/email/**" />  
+                <mvc:mapping path="/mobile/**" />
+                <mvc:mapping path="/wechat/**" />        
+                <bean class="com.cn.common.interceptor.DecodeParameterInterceptor"/>
+            </mvc:interceptor>  
+        </mvc:interceptors>    -->
+    
+    
+    <!-- 拦截器 -->
+	<mvc:interceptors>
+	     <mvc:interceptor>  
+	     <!-- 匹配的是url路径， 如果不配置或/**,将拦截所有的Controller -->
+	     <mvc:mapping path="/interface/**" />
+	         <!-- 拦截器类 --> 
+	         <bean class="com.cn.common.interceptor.FlowMonitoringInterceptor"></bean>
+	     </mvc:interceptor>
+	       <mvc:interceptor>  
+	     <!-- 匹配的是url路径， 如果不配置或/**,将拦截所有的Controller -->
+	     <mvc:mapping path="/manager/**" />
+	         <!-- 拦截器类 --> 
+	         <bean class="com.cn.common.interceptor.LoginingSessionInterceptor"></bean>
+	     </mvc:interceptor>
+	        <!-- 当设置多个拦截器时，先按顺序调用preHandle方法，然后逆序调用每个拦截器的postHandle和afterCompletion方法 -->
+	</mvc:interceptors> 
+
+    <!-- 4.处理方法级别上的@RequestMapping注解 -->
+    <bean  class="org.springframework.web.servlet.mvc.annotation.AnnotationMethodHandlerAdapter">
+        <property name="webBindingInitializer">
+            <bean
+                class="org.springframework.web.bind.support.ConfigurableWebBindingInitializer">
+                <property name="conversionService">
+                    <bean
+                        class="org.springframework.format.support.FormattingConversionServiceFactoryBean"></bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+    
+    <!-- 2.静态资源默认servlet配置 对静态资源文件的访问 不支持访问WEB-INF目录
+		(1)加入对静态资源的处理：js,gif,png
+		(2)允许使用"/"做整体映射
+	 --> 
+	 <!-- 处理静态资源的访问,Spring4以后的版本，web-inf下面的静态资源可以直接访问，4版本以前建议放在webapp下面的resources下面，并且web-che保存一个星期，一个星期之后将不再访问
+	    <mvc:resources location="/" mapping="/resources/**"/>
+	    <mvc:resources location="/WEB-INF/images/" mapping="/images/**"/>  
+	    <mvc:resources location="/WEB-INF/css/" mapping="/css/**"/> --> 
+		<mvc:resources location="/WEB-INF/js/" mapping="/js/**"/>		  
+		<mvc:resources location="/files/" mapping="/files/**" cache-period="10080"/>
+
+    <!-- 5.配置JSP视图解析器 -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/views/" /> <!-- 让ModelAndView("jsp/teacher/listTeachers.jsp") 从/WEB-INF/目录下开始 -->
+        <property name="suffix" value=".jsp" />
+        <!-- Spring内部资源解析类 -->
+        <property name="viewClass"    value="org.springframework.web.servlet.view.InternalResourceView" />
+        <property name="order" value="1" /><!-- 视图解析优先级,jsp必须是最低级的 -->
+    </bean>
+    
+   
+    <!-- FreeMarker视图解析 -->  
+	<bean id="freeMarkerViewResolver" class="org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver"> 
+	    <property name="order" value="0" /> <!-- 视图解析优先级 -->
+	    <property name="cache" value="true"/>  
+	    <property name="prefix" value="/WEB-INF/template/"/>  
+	    <property name="suffix" value=".ftl"/>
+	    <property name="contentType" value="text/html;charset=utf-8" />
+        <property name="viewClass" value="org.springframework.web.servlet.view.freemarker.FreeMarkerView" />  
+	</bean> 
+	
+	    
+    
+    <!-- 6.异常解析器 -->  
+  <bean id="simpleMappingExceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">  
+    <property name="exceptionMappings">  
+      <props>  
+        <prop key="org.springframework.web.multipart.MaxUploadSizeExceededException">jsp/common/exception</prop>  
+      </props>  
+    </property>  
+  </bean>  
+
+</beans>

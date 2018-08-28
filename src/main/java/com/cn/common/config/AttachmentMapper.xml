@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址,也就是dao下面的java类，通过这个java类，可以访问类里定义的方法
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+ <!-- 附件表操作 -->
+<mapper namespace="com.cn.common.dao.AttachmentMapper"> 
+
+  <!-- email的任务队列，因为to是关键字，这里加上''进行转义
+  <select id="selectByParameterObject"  resultType="java.util.HashMap">
+    select att_id attid,att_name attname,uploading_time time,suffix ,location 
+    from attachment
+  </select> -->
+
+
+  <insert id="insert" parameterType="java.util.Map">
+  insert into attachment(att_id,att_name,att_new_name,from_systemid,uploading_time,location)
+  values(#{attid,jdbcType=CHAR},#{attname},#{attnew},#{systemid},now(),#{location})
+  </insert>
+
+
+</mapper>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址,也就是dao下面的java类，通过这个java类，可以访问类里定义的方法
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.InterfaceMailMapper"> 
+
+  <!-- email的任务队列，因为to是关键字，这里加上''进行转义 -->
+  <select id="selectByParameterObject"  resultType="java.util.HashMap">
+    select sysid,url,para_to 'to',para_cc cc,para_subject 'subject',para_filename filename,para_filepath filepath,
+           para_user user,para_text text,para_imgs imgs,para_urls urls,para_model_code modelcode
+    from interface_email inter
+    where not exists(
+        select 1 
+        from interface_email_log log
+        where inter.sysid=log.interface_email_id
+        )
+    order by sysid
+  </select>
+
+  <!-- 插入任务记录 -->
+  <insert id="insert" parameterType="java.util.Map">
+  insert into interface_email_log(interface_email_id,message_id,retcode,retmsg,end_time)
+  values(#{sysid},#{messageid,jdbcType=CHAR},#{retcode},#{retmsg},now())
+  </insert>
+
+  <!-- 插入异步任务 -->
+  <insert id="insertInterfaceMail" parameterType="java.util.Map">
+  insert into interface_email
+  (see_number,from_user,from_system,from_system_id,from_time,url,para_to,para_cc,para_subject,para_filename,para_filepath,para_user,para_text,para_imgs,para_urls,para_model_code)
+  values
+  (IFNULL(#{seenumber,jdbcType=CHAR},''),#{fromuser},#{fromsystem},#{fromsystemid},IFNULL(#{fromtime},now()),#{url},IFNULL(#{to},''),IFNULL(#{cc},''),IFNULL(#{subject},''),IFNULL(#{filename},''),IFNULL(#{filepath},''),IFNULL(#{user},''),IFNULL(#{text},''),IFNULL(#{imgs},''),IFNULL(#{urls},''),IFNULL(#{modelcode},''))
+  </insert>
+
+
+</mapper>

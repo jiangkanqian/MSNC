@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.RoleMapper"> 
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="queryAllRole" resultType="java.util.HashMap">
+  
+	SELECT role_id roleId, role_name roleName FROM `role` where 1=1
+		<if test="roleName!=null and roleName!=''">
+		and role_name  like CONCAT('%',#{roleName,jdbcType=VARCHAR},'%')  
+		</if>
+		<if test="roleId!=null and roleId!=''">
+		and role_id  like CONCAT('%',#{roleId,jdbcType=INTEGER},'%')  
+		</if>
+  </select>
+  
+  <insert id="addRole" parameterType="java.util.HashMap">
+ 	 insert into role(role_name)values(#{roleName,jdbcType=VARCHAR})
+  </insert>
+  
+  <delete id="deleteRole" parameterType="java.util.HashMap">
+  	delete from role where role_id=#{roleId,jdbcType=INTEGER}
+  </delete>
+  
+  <select id="isRepeatRoleName" parameterType="java.util.HashMap" resultType="String">
+  
+      SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`role`
+		WHERE
+			role_name = #{roleName,jdbcType=VARCHAR}
+  </select>
+  
+  <update id="updateRole" parameterType="java.util.HashMap" >
+ 		UPDATE role
+		SET role.role_name = #{roleName,jdbcType=VARCHAR} 
+		WHERE
+			role_id=#{roleId,jdbcType=INTEGER}
+  </update>
+</mapper>

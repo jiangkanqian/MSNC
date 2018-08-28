@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.WechatLogMapper"> 
+
+  <!-- 获取各种接口的配置文件 -->
+  <select id="queryAllWechatLog" parameterType="java.util.HashMap" resultType="java.util.HashMap">
+	SELECT
+		*
+	FROM
+		(
+			SELECT
+				wechat.sysid sysid,
+				wechat.from_system sysName,
+				'定时' way,
+				wechat.para_tcontent content,
+				DATE_FORMAT(wechat.from_time, '%Y-%m-%d %T') startTime,
+				DATE_FORMAT(wechatlog.end_time, '%Y-%m-%d %T') endTime,
+				wechatlog.retcode errCode,
+				CASE
+			WHEN wechatlog.retcode IS NULL THEN
+				'等待发送'
+			ELSE
+				wechatlog.retmsg
+			END msg
+			FROM
+				interface_wechat wechat
+			LEFT JOIN interface_wechat_log wechatlog ON wechat.sysid = wechatlog.interface_wechat_id
+		where 1=1
+			<!-- 	系统名称 -->
+			<if test="sysName!=null and sysName!=''">
+			and wechat.from_system =#{sysName,jdbcType=VARCHAR} 
+			</if>
+			<!-- 	状态 -->
+			<if test="state!=null and state!=''">
+				<if test='state=="待发送"'>
+				and wechatlog.retcode is null
+				</if>
+				<if test='state=="成功"'>
+				and wechatlog.retcode = 0
+				</if>
+				<if test='state=="失败"'>
+				and wechatlog.retcode ！= 0
+				</if>
+			</if>
+			<!-- 	消息内容 -->
+			<if test="content!=null and content!=''">
+			and wechat.para_tcontent like CONCAT('%',#{content,jdbcType=VARCHAR},'%')
+			</if>
+			<!-- 	添加的时间-->
+			<if test="addStartTime!= null and addStartTime!=''">
+			and DATE_FORMAT(wechat.from_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{addStartTime}, '%Y-%m-%d %T')
+			</if>
+			<if test="addEndTime!= null and addEndTime!=''">
+			and DATE_FORMAT(wechat.from_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{addEndTime}, '%Y-%m-%d %T')
+			</if>
+			<!-- 	执行时间 -->
+			<if test="executeStartTime!= null and executeStartTime!=''">
+			and DATE_FORMAT(wechatlog.end_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{executeStartTime}, '%Y-%m-%d %T')
+			</if>
+			<if test="executeEndTime!= null and executeEndTime!=''">
+			and DATE_FORMAT(wechatlog.end_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{executeEndTime}, '%Y-%m-%d %T')
+			</if>
+			UNION
+				SELECT
+					log.log_id sysid,
+					log.from_system sysName,
+					'即时' way,
+					log.interface_parameter content,
+					DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T') startTime,
+					DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T') endTime,
+					log.invoking_state errCode,
+					log.state_msg msg
+				FROM
+					`log_manage` log where log.interface_type ='微信'
+				<if test="sysName!=null and sysName!=''">
+				and log.from_system =#{sysName,jdbcType=VARCHAR} 
+				</if> 
+				<if test="state!=null and state!=''">
+					<if test='state=="成功"'>
+					and log.invoking_state = 0
+					</if>
+					<if test='state=="失败"'>
+					and log.invoking_state ！= 0
+					</if>
+				</if>
+				<if test="content!=null and content!=''">
+				and log.interface_parameter like CONCAT('%"content":"%',#{content,jdbcType=VARCHAR},'%"%')
+				</if>
+				<!-- 	添加的时间-->
+				<if test="addStartTime!= null and addStartTime!=''">
+				and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{addStartTime}, '%Y-%m-%d %T')
+				</if>
+				<if test="addEndTime!= null and addEndTime!=''">
+				and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{addEndTime}, '%Y-%m-%d %T')
+				</if>
+				<!-- 	执行时间 -->
+				<if test="executeStartTime!= null and executeStartTime!=''">
+				and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&lt;DATE_FORMAT(#{executeStartTime}, '%Y-%m-%d %T')
+				</if>
+				<if test="executeEndTime!= null and executeEndTime!=''">
+				and DATE_FORMAT(log.invoking_time, '%Y-%m-%d %T')&gt;DATE_FORMAT(#{executeEndTime}, '%Y-%m-%d %T')
+				</if>
+		) logQuery
+	ORDER BY
+		logQuery.endTime DESC
+
+
+  </select>
+  
+  
+  <select id="queryDetailsLog" parameterType="String" resultType="java.util.HashMap">
+  
+	  SELECT
+		wechat.sysid sysid,
+		wechat.from_system sysName,
+		'定时' way,
+		wechat.para_tcontent content,	
+		DATE_FORMAT(wechat.from_time, '%Y-%m-%d %T') startTime,
+		DATE_FORMAT(wechatlog.end_time, '%Y-%m-%d %T') endTime,
+		wechatlog.retcode errCode,
+		wechat.see_number seeNumber,
+		wechat.para_model_code modelCode,
+		wechat.from_system_id fromSysId,
+		wechat.para_tcontent content,
+		wechat.para_tsecret secret,
+		wechat.para_tappid appid,
+		wechat.url,
+		CASE
+	WHEN wechatlog.retcode IS NULL THEN
+		'等待发送'
+	ELSE
+		wechatlog.retmsg
+	END msg
+	FROM
+		interface_wechat wechat
+	LEFT JOIN interface_wechat_log wechatlog ON wechat.sysid = wechatlog.interface_wechat_id
+	WHERE
+		wechat.sysid = #{sysid,jdbcType=INTEGER} 
+  
+  </select>
+</mapper>

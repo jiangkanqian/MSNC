@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- @author chen.kai mapper.xml 规范 ： 1)namespace 等于mapper接口地址 2)mapper.Java 
+	接口中的方法和mapper.xml中的statement 的id一致 3)mapper.java 接口中的方法的参数和mapper.xml中的statement 
+	的paramterType类型一致 4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致 -->
+<mapper namespace="com.cn.common.dao.FlowMonitoringMapper">
+
+<select id="selectAllFlowMonitoring" resultType="java.util.HashMap">
+	SELECT
+		CONCAT(
+			interface_son_type,
+			"_",
+			systemid
+		) type,
+		amount,
+		unit
+	FROM
+		`interface_flow_monitoring_parameter`
+	WHERE
+		state != 0
+</select>
+
+<select id="queryAllFlowMonitoring" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	SELECT
+		fm.sysid,
+		fm.interface_son_type interfaceSonType,
+		fm.systemid systemId,
+		apps.appname,
+		fm.amount,
+		fm.state
+	FROM
+		interface_flow_monitoring_parameter fm
+	LEFT JOIN apps ON apps.appid = fm.systemid
+	 where 1=1 
+	 <if test="interfaceSonType!=null and interfaceSonType!=''">
+	  and fm.interface_son_type like CONCAT('%',#{interfaceSonType,jdbcType=VARCHAR},'%')
+	 </if>
+</select>
+
+<insert id="addFlowMonitoring" parameterType="java.util.HashMap">
+	insert into interface_flow_monitoring_parameter
+	 (interface_son_type,systemid,amount,state)
+	 values
+	 (#{interfaceSonType,jdbcType=VARCHAR},
+	 #{systemId,jdbcType=VARCHAR},
+	 #{amount,jdbcType=INTEGER},
+	 #{state,jdbcType=INTEGER})
+</insert>
+
+<update id="updateFlowMonitoring" parameterType="java.util.HashMap">
+	UPDATE interface_flow_monitoring_parameter
+	SET interface_son_type = #{interfaceSonType,jdbcType=VARCHAR},
+	 systemid = #{systemId,jdbcType=VARCHAR},
+	 amount = #{amount,jdbcType=INTEGER},
+	 state =  #{state,jdbcType=INTEGER}
+	WHERE
+		sysid = #{sysid,jdbcType=INTEGER}
+</update>
+
+<delete id="deleteFlowMonitoring" parameterType="java.util.HashMap" >
+	delete from interface_flow_monitoring_parameter where sysid= #{sysid,jdbcType=INTEGER}
+</delete>
+
+<select id="isRepeatSetFlowMonitoring" parameterType="java.util.HashMap" resultType="String">
+
+	SELECT
+			CASE
+		WHEN count(1) = 0 THEN
+			'false'
+		ELSE
+			'true'
+		END state
+		FROM
+			`interface_flow_monitoring_parameter` fm
+		WHERE
+			fm.interface_son_type = #{interfaceSonType,jdbcType=VARCHAR} 
+			and fm.systemid=#{systemId,jdbcType=VARCHAR}
+</select>
+
+
+<select id="queryRemnantFlowMonitoring" parameterType="java.util.HashMap" resultType="int">
+
+	select (ifnull(s.sysValue,0)-f.amount) from (SELECT
+		ifnull(sum(fm.amount),0) amount
+	FROM
+		interface_flow_monitoring_parameter fm where fm.interface_son_type=  #{interfaceSonType,jdbcType=VARCHAR}) f,(SELECT
+			cast(sys_value as SIGNED INTEGER) sysValue
+		FROM
+			sys_parameter where sys_name=  #{interfaceSonType,jdbcType=VARCHAR}) s
+</select>
+
+<select id="queryFlow" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		select apps.appname ,t.* from (SELECT interface_son_type,from_system_id,date_format(from_time,'%Y-%m') time,count(message_id) counts
+	from interface_task_log
+	where date_format(from_time,'%Y-%m')=date_format(
+	<if test="date!=null and date!=''">
+	#{date,jdbcType=VARCHAR}
+	</if>
+	<if test="date==null or date==''">
+	NOW()
+	</if>
+	,'%Y-%m')
+	group by interface_son_type,from_system_id,time) t LEFT JOIN apps on apps.appid=t.from_system_id
+</select>
+</mapper>

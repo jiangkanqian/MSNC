@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">  
+<!-- 
+    @author chen.kai
+	mapper.xml 规范 ：
+   1)namespace 等于mapper接口地址
+   2)mapper.Java 接口中的方法和mapper.xml中的statement 的id一致
+   3)mapper.java 接口中的方法的参数和mapper.xml中的statement 的paramterType类型一致
+   4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致	
+ --> 
+<mapper namespace="com.cn.common.dao.AppMapper"> 
+<select id="queryAllApp" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	SELECT
+	apps.sysid,
+	apps.appname appName,
+	apps.appid,
+	apps.secret,
+	apps.user_id userId,
+	users.user_name userName,
+	apps.state,
+	apps.remark,
+	DATE_FORMAT(
+		apps.create_time,
+		'%Y-%m-%d %T'
+	) createTime
+FROM
+	`apps`
+LEFT JOIN users ON apps.user_id = users.user_id ,users u
+WHERE
+ (u.user_id = users.user_id and users.user_id = #{userId,jdbcType=INTEGER} or(u.user_id = #{userId,jdbcType=INTEGER} and u.account='admin'))
+			<if test="appName!=null and appName!=''">
+				and apps.appname like CONCAT('%',#{appName,jdbcType=VARCHAR},'%')
+			</if>
+</select>
+<select id="queryApp" resultType="java.util.HashMap">
+		SELECT
+			apps.appname appName,
+			apps.appid systemId
+		FROM
+			`apps`
+</select>
+<update id="updateApp" parameterType="java.util.HashMap">
+
+	UPDATE  apps
+	SET appname = #{appName,jdbcType=VARCHAR},
+	 state = #{state,jdbcType=INTEGER},
+	 remark = #{remark,jdbcType=VARCHAR}
+	WHERE
+		sysid = #{sysid,jdbcType=INTEGER}
+</update>
+
+<insert id="addApp" parameterType="java.util.HashMap">
+	INSERT INTO apps (
+		appname,
+		appid,
+		secret,
+		user_id,
+		state,
+		remark,
+		create_time
+	)
+	VALUES(
+		#{appName,jdbcType=VARCHAR},
+		#{appid,jdbcType=VARCHAR},
+		#{secret,jdbcType=VARCHAR},
+		#{userId,jdbcType=INTEGER},
+		#{state,jdbcType=INTEGER},
+		#{remark,jdbcType=VARCHAR},
+		now())
+</insert>
+<delete id="deleteApp" parameterType="java.util.HashMap">
+	DELETE
+	FROM
+		apps
+	WHERE
+		sysid =#{sysid,jdbcType=INTEGER}
+</delete>
+<select id="isRepeatAppId" parameterType="java.lang.String" resultType="String">
+	SELECT
+		CASE
+	WHEN count(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	END state
+	FROM
+		`apps`
+	WHERE
+		appid= #{appid,jdbcType=VARCHAR}
+</select>
+<select id="isRepeatAppName" parameterType="java.lang.String" resultType="String">
+	SELECT
+		CASE
+	WHEN count(1) = 0 THEN
+		'false'
+	ELSE
+		'true'
+	END state
+	FROM
+		`apps`
+	WHERE
+		appname= #{appName,jdbcType=VARCHAR}
+</select>
+<select id="queryAppWithMAmountAndIAmount"  resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	
+	SELECT
+		apps.sysid,
+		apps.appid,
+		apps.appname,
+		IFNULL(tm.count, 0) modelAmount,
+		IFNULL(ti.count, 0) interfaceAmount
+	FROM
+		apps
+	LEFT JOIN  (select tm.app_id ,(IFNULL(tm.count,0)+IFNULL(s.count,0)) count from (SELECT
+			app_model.app_id,
+			count(1) count
+		FROM
+			app_model
+		GROUP BY
+			app_model.app_id)tm left JOIN 
+(select models.count,apps.sysid from (select count(1) count ,models.system_id from models group by models.system_id) models LEFT JOIN apps  on apps.appid=models.system_id )s on s.sysid=tm.app_id 
+union select s.sysid ,(IFNULL(tm.count,0)+IFNULL(s.count,0)) count  from (SELECT
+			app_model.app_id,
+			count(1) count
+		FROM
+			app_model
+		GROUP BY
+			app_model.app_id)tm right JOIN 
+(select models.count,apps.sysid from (select count(1) count ,models.system_id from models group by models.system_id) models LEFT JOIN apps  on apps.appid=models.system_id )s on s.sysid=tm.app_id 
+)tm ON apps.sysid = tm.app_id LEFT JOIN  (
+		SELECT
+			app_interface.app_id,
+			count(1) count
+		FROM
+			app_interface
+		GROUP BY
+			app_interface.app_id
+	) ti  ON apps.sysid = ti.app_id where 1=1
+			<if test="appname!=null and appname!=''">
+				 and apps.appname like CONCAT('%',#{appname,jdbcType=VARCHAR},'%')
+			</if>
+</select>
+<select id="isCanDeleteApp" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+
+
+select * from (
+select count(1) count,"该应用下有接口" msg from app_interface ai 
+where ai.app_id=#{sysid,jdbcType=INTEGER} group by ai.app_id)tai where tai.count>0 
+union
+select * from (
+select count(1) count,"该应用下有模板" msg from app_model am  
+where am.app_id=#{sysid,jdbcType=INTEGER} group by am.app_id)tam where tam.count>0  
+union
+select * from (select count(1) count,"该应用下有用户" msg from users,apps
+ where users.system_id=apps.appid and apps.sysid=#{sysid,jdbcType=INTEGER}) u where u.count>0
+union 
+select * from (select count(1) count ,"该应用下有模板" msg  from models ,apps where models.system_id=apps.appid and apps.sysid=#{sysid,jdbcType=INTEGER})t where t.count>0
+</select>
+</mapper>

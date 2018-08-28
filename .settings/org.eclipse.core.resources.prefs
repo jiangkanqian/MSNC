@@ -1,0 +1,9 @@
+eclipse.preferences.version=1
+encoding//src/main/java/com/cn/common/util/DesUtils.java=UTF-8
+encoding//src/main/java/com/cn/common/util/PlooingHttpClientUtil.java=UTF-8
+encoding//src/main/java/com/cn/common/util/TestUtils.java=UTF-8
+encoding//src/main/java/com/cn/common/web/HomeController.java=UTF-8
+encoding//src/main/resources/jdbc.properties=UTF-8
+encoding//src/main/resources/rabbit.properties=UTF-8
+encoding/<project>=UTF-8
+separateDerivedEncodings=true

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- @author chen.kai mapper.xml 规范 ： 1)namespace 等于mapper接口地址 2)mapper.Java 
+	接口中的方法和mapper.xml中的statement 的id一致 3)mapper.java 接口中的方法的参数和mapper.xml中的statement 
+	的paramterType类型一致 4)mapper.java 接口中的方法的返回值和mapper.xml中的statement的resultType类型一致 -->
+<mapper namespace="com.cn.common.dao.MenuMapper">
+
+	<select id="queryAllMenu" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+		SELECT
+			m.sysid ,
+			m.menu_name menuName,
+			m. LEVEL level,
+			m.parent_id parentId,
+			pm.menu_name parentName,
+			m.url,
+			m.is_display  isDisplay,
+		 	m.remark
+		FROM
+			`system_menus` m
+		LEFT JOIN `system_menus` pm ON m.parent_id = pm.sysid where 1=1
+		<if test="url!=null and url!=''">
+		and m.url like CONCAT('%',#{url,jdbcType=VARCHAR},'%') 
+		</if>
+		<if test="menuName!=null and menuName!=''">
+		and m.menu_name like CONCAT('%',#{menuName,jdbcType=VARCHAR},'%') 
+		</if>
+	</select>
+	<select id="queryMenu" resultType="java.util.HashMap">
+	SELECT
+			m.sysid ,
+			m.menu_name menuName,
+			m. LEVEL level,
+			m.parent_id parentId,
+			m.url,
+			m.is_display = 0 isDisplay,
+		 m.remark
+		FROM
+			`system_menus` m
+	</select>
+	<insert id="addMenu" parameterType="java.util.HashMap">
+
+		INSERT INTO `system_menus` (
+			menu_name,
+			LEVEL,
+			parent_id,
+			url,
+			is_display,
+			remark
+		)
+		VALUES
+		(
+			#{menuName,jdbcType=VARCHAR},
+			#{level,jdbcType=INTEGER},
+			#{parentId,jdbcType=INTEGER},
+			#{url,jdbcType=VARCHAR},
+			#{isDisplay,jdbcType=INTEGER},
+			#{remark,jdbcType=VARCHAR}
+		)
+
+	</insert>
+	<delete id="deleteMenu" parameterType="java.util.HashMap">
+		DELETE FROM
+			`system_menus`
+		WHERE
+			sysid = #{sysid,jdbcType=INTEGER}
+	</delete>
+	<update id="updateMenu" parameterType="java.util.HashMap">
+		UPDATE `system_menus`
+		SET menu_name = #{menuName,jdbcType=VARCHAR},
+		LEVEL = #{level,jdbcType=INTEGER},
+		parent_id = #{parentId,jdbcType=INTEGER},
+		url = #{url,jdbcType=VARCHAR},
+		is_display = #{isDisplay,jdbcType=INTEGER},
+		remark = #{remark,jdbcType=VARCHAR}
+		WHERE
+		sysid = #{sysid,jdbcType=INTEGER}
+	</update>
+	
+	<select id="queryUserMenu" resultType="java.util.HashMap" parameterType="java.util.HashMap">
+	select * from (SELECT
+			sm.sysid,
+			sm.menu_name menuName,
+			sm. LEVEL LEVEL,
+			sm.parent_id parentId,
+			sm.url,
+			sm.is_display isDisplay,
+		 sm.remark
+		FROM
+			system_menus sm,
+			(
+				SELECT
+					menus_id,
+					rm.is_all
+				FROM
+					role_menus rm,
+					users_role ur
+				WHERE
+					ur.role_id = rm.role_id
+				AND ur.user_id =  #{userId,jdbcType=INTEGER}
+			) m
+		WHERE
+			sm.sysid = m.menus_id
+		OR m.is_all = 1)t where t.isDisplay!=0
+	</select>
+</mapper>
